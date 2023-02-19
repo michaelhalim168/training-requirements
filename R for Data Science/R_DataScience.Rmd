@@ -1,0 +1,168 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(plotly)
+
+options(warn=-1)
+```
+
+
+```{r}
+gapminder <- read.csv("gapminder_clean.csv", header=TRUE)
+gapminder_1962 <- gapminder %>% filter(Year == 1962) %>% select(CO2.emissions..metric.tons.per.capita., gdpPercap) %>% na.omit()
+
+
+### Without Log Scale
+gapminder_1962 %>% ggplot(aes(x=CO2.emissions..metric.tons.per.capita., y=gdpPercap)) + 
+  geom_point(colour="black", shape=21, alpha = 1, stroke = 1, size=3, fill="orange") + 
+  xlab("CO2 Emissions (Metric Tons) per Capita") + 
+  ylab("GDP per Capita") + 
+  ggtitle(label="CO2 Emissions vs. GDP per Capita, Year 1962") +
+  theme(legend.position = "right") +
+  theme_classic()
+
+
+```
+```{r}
+### With Log Scale
+
+gapminder_1962 %>% ggplot(aes(x=CO2.emissions..metric.tons.per.capita., y=gdpPercap)) + 
+  geom_point(colour="black", shape=21, alpha = 1, stroke = 1, size=3, fill="orange") + 
+  xlab("CO2 Emissions (Metric Tons) per Capita") + 
+  ylab("GDP per Capita") + 
+  ggtitle(label="CO2 Emissions vs. GDP per Capita, Year 1962", subtitle = "Logarithmic Scale") +
+  geom_smooth(method = "lm", se = FALSE, colour = "red") +
+  theme(legend.position = "right") +
+  theme_classic() +
+  scale_x_log10() + 
+  scale_y_log10()
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+```{r}
+gapminder_1962_corr <- gapminder_1962 %>% mutate(CO2Log = log(CO2.emissions..metric.tons.per.capita.), GDPLog = log(gdpPercap)) %>% 
+  summarize(correl_coeff = cor.test(x = CO2Log, y = GDPLog, method = "pearson")$estimate, p_value = cor.test(x = CO2Log, y = GDPLog, method = "pearson")$p.value)
+
+```
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+```{r}
+gapminder_corr <- gapminder %>% select(Year, CO2.emissions..metric.tons.per.capita., gdpPercap) %>% na.omit() %>% 
+  mutate(CO2Log = log(CO2.emissions..metric.tons.per.capita.), GDPLog = log(gdpPercap)) %>%
+  group_by(Year) %>%
+  summarize(correl_coeff = cor.test(x = CO2Log, y = GDPLog, method = "pearson")$estimate, p_value = cor.test(x = CO2Log, y = GDPLog, method = "pearson")$p.value) %>% arrange(desc(correl_coeff))
+
+gapminder_corr  
+
+```
+```{r}
+gapminder_2002 <- gapminder %>% filter(Year == 2002) %>% 
+  select(CO2.emissions..metric.tons.per.capita., gdpPercap, pop, continent) %>% na.omit()
+
+
+p <- gapminder_2002 %>% ggplot(aes(x = CO2.emissions..metric.tons.per.capita., y = gdpPercap, size = pop)) + 
+  geom_point(aes(fill = continent), color = "black", pch= 21) + 
+  xlab("CO2 Emissions (Metric Tons) per Capita") + 
+  ylab("GDP per Capita") + 
+  ggtitle(label = "CO2 Emissions vs. GDP per Capita, Year = 2002", subtitle = "Logarithmic Scale") +
+  scale_x_log10() + 
+  scale_y_log10() + 
+  theme_classic() +
+  theme(legend.position = "right")
+
+
+ggplotly(p, width= 600, height = 600)
+```
+
+
+```{r}
+energy_continent <- gapminder %>% select(continent, Energy.use..kg.of.oil.equivalent.per.capita.) %>% na.omit() %>% filter(continent != "") 
+
+p <- energy_continent %>% ggplot(aes(x = continent, y = Energy.use..kg.of.oil.equivalent.per.capita.)) + 
+  geom_boxplot() +
+  xlab("Continents") + 
+  ylab("Energy Use (kg of Oil) per Capita") + 
+  ggtitle(label = "Energy Use per Capita by Continent", subtitle = "Logarithmic Scale") + 
+  theme_classic() + 
+  scale_y_log10()
+
+ggplotly(p, width = 600, height = 600)
+```
+
+
+```{r}
+one_way <- aov(Energy.use..kg.of.oil.equivalent.per.capita. ~ continent, data = energy_continent)
+summary(one_way)
+```
+
+
+```{r}
+continent_import <- gapminder %>% select(Year, continent, Imports.of.goods.and.services....of.GDP.) %>% na.omit() %>%
+  filter(Year > 1990) %>% filter(continent == "Europe" | continent == "Asia") %>% mutate(Year = as.factor(Year))
+
+p <- continent_import %>% ggplot(aes(x = Year, y = Imports.of.goods.and.services....of.GDP., fill = continent)) + geom_boxplot() + 
+xlab("Year") + ylab("Imports of Goods and Services (% of GDP)") + 
+ggtitle(label = "Asia vs. Europe Imports after 1990") + 
+theme_classic()
+ggplotly(p) %>% layout(width = 800, boxmode = "group")
+```
+
+
+```{r}
+two_way <- aov(Imports.of.goods.and.services....of.GDP. ~ continent + Year, data = continent_import)
+
+summary(two_way)
+```
+
+
+```{r}
+top_density_year <- gapminder %>% select(Year, Country.Name, Population.density..people.per.sq..km.of.land.area.) %>% na.omit() %>%
+  arrange(Year, desc(Population.density..people.per.sq..km.of.land.area.)) %>% group_by(Year) %>% mutate(rank = row_number()) %>% filter(rank <= 10) %>% transform(Country.Name=reorder(Country.Name, -rank))
+
+
+p <- top_density_year %>% ggplot(aes(Population.density..people.per.sq..km.of.land.area., Country.Name)) + geom_point() + facet_wrap(~Year)
+p
+
+
+```
+
+
+```{r}
+top_density <- top_density_year %>% group_by(Country.Name) %>% summarize(avg_ranking = mean(rank)) %>% arrange(avg_ranking) %>% head(10)
+top_density
+```
+```{r}
+life_expectancy <- gapminder %>% select(Year, Country.Name, Life.expectancy.at.birth..total..years.) %>% na.omit() %>% 
+  filter(Year == 1962 | Year == 2007) %>% group_by(Country.Name) %>% summarize(life_exp_1962 = Life.expectancy.at.birth..total..years.[Year == 1962], life_exp_2007 = Life.expectancy.at.birth..total..years.[Year == 2007], life_exp_diff = life_exp_2007 - life_exp_1962) %>% arrange(desc(life_exp_diff)) %>% head(20) %>% transform(Country.Name=reorder(Country.Name, life_exp_diff))
+
+life_expectancy
+```
+
+
+```{r}
+p <- life_expectancy %>% ggplot(aes(Country.Name, life_exp_diff)) + geom_point(col="tomato2", size=3) +
+  geom_segment(aes(x=Country.Name, 
+                   xend=Country.Name, 
+                   y=min(life_exp_diff), 
+                   yend=max(life_exp_diff)), 
+               linetype="dashed", 
+               size=0.1) +
+  ylab("Difference in Life Expectancy between 2007 and 1962 (Years)") + 
+  xlab("Country") + theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+  labs(title = "Top 20 Countries with Greatest Increase in Life Expectancy") +
+  coord_flip() + theme_classic()
+
+p
+```
+
