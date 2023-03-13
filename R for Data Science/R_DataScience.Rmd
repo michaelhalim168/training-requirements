@@ -158,8 +158,7 @@ To analyze the differences between Europe and Asia in terms of Imports of Goods 
 continent_import <- gapminder %>% 
   select(Year, continent, Imports.of.goods.and.services....of.GDP.) %>% 
   na.omit() %>%
-  filter(Year > 1990, continent %in% c("Europe", "Asia")) %>% 
-  mutate(Year = as.factor(Year))
+  filter(Year > 1990, continent %in% c("Europe", "Asia"))
 
 p <- continent_import %>% 
   ggplot(aes(x = continent, y = Imports.of.goods.and.services....of.GDP.)) + geom_boxplot() + xlab("Continent") + ylab("Imports of Goods and Services (% of GDP)") + ggtitle(label = "Asia vs. Europe Imports after 1990") + theme_classic()
